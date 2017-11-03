@@ -3,21 +3,26 @@ import google_auth_oauthlib.flow
 import google.oauth2.credentials
 import boto3
 import logging
+import time
+import json
 
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('list_ids')
 
+s3 = boto3.client('s3')
+
 def save_list(timestamp,page_token,result_list):
   item = {}
   logging.error("starting save")
   item['timestamp'] = timestamp
-  item['page_token'] = page_token
+  item['page_token'] = "whole list"
   item['ids'] = result_list
-  table.put_item(Item=item)
+  #table.put_item(Item=item)
   logging.error("ending save")
-
+  s3.put_object(Body=json.dumps(result_list),Bucket='email-id-lists',Key=timestamp)
+  logging.error("ending save2")
 
 API_SERVICE_NAME = 'gmail'
 API_VERSION = 'v1'
@@ -57,15 +62,23 @@ def per_record(event, context):
       API_SERVICE_NAME, API_VERSION, credentials=creds)
    
     logging.error("Credentials Built")
+    logging.error(creds.token)
     response = gmail.users().messages().list(userId='me').execute()
-    save_list(timestamp,"initial",response['messages'])
+    messages = []
+    if 'messages' in response:
+        messages.extend(response['messages'])
+#    save_list(timestamp,"initial",response['messages'])
 
     logging.error("Checking nextPageTokens")
     while 'nextPageToken' in response:
+        logging.error("Executing nextPageToken")
         page_token = response['nextPageToken']
         response = gmail.users().messages().list(userId='me', pageToken=page_token).execute()
-        save_list(timestamp,page_token,response['messages']) 
-    logging.info("record success")
+        messages.extend(response['messages'])
+#        save_list(timestamp,page_token,response['messages']) 
+
+    save_list(timestamp,None,messages)
+    logging.error("record success")
     return "success"
 
 def my_handler(event,context):
@@ -76,11 +89,16 @@ def my_handler(event,context):
     if u'Records' in event:
         for record in event[u'Records']:
             if u'dynamodb' in record and u'NewImage' in record[u'dynamodb']:
-                per_record(record[u'dynamodb'][u'NewImage'],context)
+                try:
+                    per_record(record[u'dynamodb'][u'NewImage'],context)
+                except:
+                    logging.error("Some Error Occurred")
+                    logging.error(record)
+                    logging.error(event)
             else:
                 logging.error("Missing dynamodb or NewImage")
                 logging.error(record)
-        return "got through 'em all"
+        return "Completed all records"
     else:
         logging.error("No 'Records' field")
         logging.error(event)
