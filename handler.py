@@ -2,6 +2,9 @@ import googleapiclient.discovery
 import google_auth_oauthlib.flow
 import google.oauth2.credentials
 import boto3
+import logging
+
+logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('list_ids')
@@ -20,8 +23,10 @@ API_VERSION = 'v1'
 
 def my_handler(event, context):
     if event is None:
+        logging.error("event was null")
         return "event was null"
     if 'timestamp' not in event:
+        logging.error("timestamp not in event" + str(event))
         return "event had no timestamp"
 
     timestamp = event['timestamp']
