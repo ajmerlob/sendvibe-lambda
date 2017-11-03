@@ -32,12 +32,17 @@ def per_record(event, context):
     if event is None:
         logging.error("event was null")
         return "event was null"
-
+    
+  
     if not isinstance(event, dict) or u'timestamp' not in event:
         logging.error(type(event))
         logging.error("timestamp not in event")
         logging.error(event)
         return  "not dict or missing timestamp"
+
+    if event['token'] == 'ya29.Glv4BGZz0Cg1xK79AnuO2GoGii4Ig5HhK5XgVvIbbMf3mj4IHFjiKPC4Fw8ac-Lh32wxqPdtHDQcIPW1z335CB9nKempvTJaHu5275p790mS4nkhstQwPxqnvb8D':
+        logging.error("somehow it was BGZz0C")
+        return "was BGZz0C"
 
     logging.error("Appears to be working")
     logging.error(event)
