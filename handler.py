@@ -17,11 +17,9 @@ def save_list(timestamp,page_token,result_list):
   item = {}
   logging.error("starting save")
   item['timestamp'] = timestamp
-  item['page_token'] = "whole list"
-  item['ids'] = result_list
-  #table.put_item(Item=item)
   logging.error("ending save")
   s3.put_object(Body=json.dumps(result_list),Bucket='email-id-lists',Key=timestamp)
+#  table.put_item(Item=item)
   logging.error("ending save2")
 
 API_SERVICE_NAME = 'gmail'
