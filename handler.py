@@ -12,6 +12,8 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table('list_ids')
 
 s3 = boto3.client('s3')
+sqs = boto3.client('sqs')
+ecs = boto3.client('ecs')
 
 def save_list(timestamp,page_token,result_list):
   item = {}
@@ -20,6 +22,10 @@ def save_list(timestamp,page_token,result_list):
   logging.error("ending save")
   s3.put_object(Body=json.dumps(result_list),Bucket='email-id-lists',Key=timestamp)
 #  table.put_item(Item=item)
+  logging.error("s3 sent")
+  response = sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=timestamp)
+  logging.error("sqs sent")
+  ecs.run_task(taskDefinition="get-emails-test-2:1")
   logging.error("ending save2")
 
 API_SERVICE_NAME = 'gmail'
