@@ -16,7 +16,7 @@ message = sqs.receive_message(QueueUrl=QueueUrl,MaxNumberOfMessages=1,WaitTimeSe
 
 timestamp = message['Messages'][0]['Body']
 sqs.delete_message(QueueUrl=QueueUrl,ReceiptHandle=message['Messages'][0]['ReceiptHandle'])
-#print "deleted"
+print "grabbed and deleted message"
 
 ## Trade the S3 key for the messages
 
@@ -46,6 +46,7 @@ count = 0
 
 send = []
 starting_msg_id = 'initial'
+print 'starting initial email mining'
 for email_id in email_ids_list:
   count += 1
   msg_id = (email_id['id'])
@@ -57,7 +58,7 @@ for email_id in email_ids_list:
   ## Now that you have the message, store it back in dynamodb
   if count % 50 == 0:
     time.sleep(1)
-  if count % 500 = 0:
+  if count % 500 == 0:
     print email_id, "boom!"
     s3.put_object(Body=json.dumps(send),Bucket='email-data-full',Key="{}-{}-{}".format(timestamp,starting_msg_id,msg_id))
     starting_msg_id = msg_id    
