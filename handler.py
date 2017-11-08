@@ -100,10 +100,11 @@ def my_handler(event,context):
             if u'dynamodb' in record and u'NewImage' in record[u'dynamodb']:
                 try:
                     per_record(record[u'dynamodb'][u'NewImage'],context)
-                except:
+                except Exception, e:
                     logging.error("Some Error Occurred")
                     logging.error(record)
                     logging.error(event)
+		    logging.error(e)
             else:
                 logging.error("Missing dynamodb or NewImage")
                 logging.error(record)

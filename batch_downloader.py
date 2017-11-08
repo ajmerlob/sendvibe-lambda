@@ -42,22 +42,23 @@ from apiclient.discovery import build
 service = build('gmail', 'v1',credentials=creds)
 email_address = service.users().getProfile(userId='me').execute()['emailAddress']
 
-email_table = dynamodb.Table('emails')
-
 count = 0
-print type(email_ids_list)
+
+send = []
+starting_msg_id = 'initial'
 for email_id in email_ids_list:
-  print email_id
   count += 1
   msg_id = (email_id['id'])
   message = service.users().messages().get(userId='me', id=msg_id).execute()
 
-  data = {}
-  data['email_address'] = email_address
-  data['id'] = message['id']
-  data['email_data'] = json.dumps(message)
+  message['email_address'] = email_address
+  send.append(message)
 
   ## Now that you have the message, store it back in dynamodb
-  email_table.put_item(Item=data)
   if count % 50 == 0:
     time.sleep(1)
+  if count % 500 = 0:
+    print email_id, "boom!"
+    s3.put_object(Body=json.dumps(send),Bucket='email-data-full',Key="{}-{}-{}".format(timestamp,starting_msg_id,msg_id))
+    starting_msg_id = msg_id    
+    send = []
