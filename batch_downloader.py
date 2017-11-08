@@ -5,7 +5,7 @@ import json
 import googleapiclient.discovery
 import google_auth_oauthlib.flow
 import google.oauth2.credentials
-
+import time
 
 ## Get the S3 Key so you can get the ids
 
@@ -16,7 +16,7 @@ message = sqs.receive_message(QueueUrl=QueueUrl,MaxNumberOfMessages=1,WaitTimeSe
 
 timestamp = message['Messages'][0]['Body']
 sqs.delete_message(QueueUrl=QueueUrl,ReceiptHandle=message['Messages'][0]['ReceiptHandle'])
-print "deleted"
+#print "deleted"
 
 ## Trade the S3 key for the messages
 
@@ -30,7 +30,7 @@ table = dynamodb.Table('tokens')
 
 dict_of_creds =  table.get_item(Key={"timestamp":timestamp})['Item']
 del dict_of_creds['timestamp']
-print dict_of_creds
+#print dict_of_creds
 creds = google_auth_oauthlib.flow.credentials = google.oauth2.credentials.Credentials(**dict_of_creds)
 
 ## Now that you've got the ids - go get the messages
@@ -40,14 +40,24 @@ from apiclient import errors
 from apiclient.discovery import build
 
 service = build('gmail', 'v1',credentials=creds)
+email_address = service.users().getProfile(userId='me').execute()['emailAddress']
+
+email_table = dynamodb.Table('emails')
 
 count = 0
+print type(email_ids_list)
 for email_id in email_ids_list:
+  print email_id
   count += 1
-  msg_id = email_id['id']
+  msg_id = (email_id['id'])
   message = service.users().messages().get(userId='me', id=msg_id).execute()
 
-  print 'Message snippet: %s' % message['snippet']
+  data = {}
+  data['email_address'] = email_address
+  data['id'] = message['id']
+  data['email_data'] = json.dumps(message)
 
-  if count > 5:
-    break
+  ## Now that you have the message, store it back in dynamodb
+  email_table.put_item(Item=data)
+  if count % 50 == 0:
+    time.sleep(1)
