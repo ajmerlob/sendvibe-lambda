@@ -70,12 +70,24 @@ class Gmining:
     self.service = build('gmail', 'v1',credentials=creds)
     self.email_address = self.service.users().getProfile(userId='me').execute()['emailAddress']
   
+  def attempt_read_queue(self):
+    for attempt in range(3):
+      try:
+        list_of_id_lists = self.sqs.receive_message(QueueUrl=self.QueueUrlIds,MaxNumberOfMessages=10,WaitTimeSeconds=20)
+        assert 'Messages' in list_of_id_lists, "Queue with ids was empty or returned nothing after 20 seconds - attempt {}".format(attempt)
+        return list_of_id_lists
+      except AssertionError, ae:
+        print ae
+    return None
+    
+
   def read_queue(self):
     ## Open up the queue with the ids
     print 'reading queue of ids'
-    list_of_id_lists = self.sqs.receive_message(QueueUrl=self.QueueUrlIds,MaxNumberOfMessages=10,WaitTimeSeconds=20)
+    list_of_id_lists = self.attempt_read_queue() 
+    assert list_of_id_lists is not None, "Queue deemed empty"
+
     print 'starting id reads'
-    
     ## Open up the messages, which are lists of 50 ids
     email_data = []
     count = 0
@@ -99,5 +111,7 @@ g = Gmining()
 try:
   while True:
     g.read_queue()
+except AssertionError:
+  pass
 finally:
   g.final_clean()
