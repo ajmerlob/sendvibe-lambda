@@ -57,6 +57,7 @@ class Gmining:
     print 'getting timestamp'
     self.QueueUrlTimestamp = "https://sqs.us-west-2.amazonaws.com/985724320380/email_ids_to_download"
     timestamp_message = self.sqs.receive_message(QueueUrl=self.QueueUrlTimestamp,MaxNumberOfMessages=1,WaitTimeSeconds=20)
+    self.sqs.delete_message(QueueUrl=self.QueueUrlTimestamp,ReceiptHandle=self.rh)
     self.rh = timestamp_message['Messages'][0]['ReceiptHandle']
     self.timestamp = timestamp_message['Messages'][0]['Body']
     self.QueueUrlIds = "https://sqs.us-west-2.amazonaws.com/985724320380/" + self.timestamp_mod(self.timestamp)
@@ -82,7 +83,7 @@ class Gmining:
     
 
   def read_queue(self):
-    ## Open up the queue with the ids
+    ## Use the SQS queue with the ids
     print 'reading queue of ids'
     list_of_id_lists = self.attempt_read_queue() 
     assert list_of_id_lists is not None, "Queue deemed empty"
@@ -103,8 +104,7 @@ class Gmining:
 
   def final_clean(self):
     self.sqs.delete_queue(QueueUrl=self.QueueUrlIds)
-    self.sqs.delete_message(QueueUrl=self.QueueUrlTimestamp,ReceiptHandle=self.rh)
-    print "deleted timestamp from queue and id-queue" 
+    print "deleted id-list queue (even if it had messages in it)" 
     
 
 g = Gmining()    
