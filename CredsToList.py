@@ -16,25 +16,16 @@ class CredsToList:
     return ts.replace(":","-").replace(".","-").replace("+","-")
 
   def __init__(self):
-    s3 = boto3.client('s3')
-    sqs = boto3.client('sqs')
-    ecs = boto3.client('ecs')
-  
-  def save_list(self,result_list,queueName):
-    logging.error("starting save")
-    sqs.send_message(QueueUrl=queueName,MessageBody=json.dumps(result_list))
-    logging.error("s3 sent")
-    #ecs.run_task(taskDefinition="get-emails-test-2:1")
-    logging.error("ending save2")
-  
+    self.sqs = boto3.client('sqs')
+    self.ecs = boto3.client('ecs')
   
   def per_record(self, event, context):
-      ## Debug
-      if not isinstance(event, dict) or u'timestamp' not in event:
-          logging.error(type(event))
-          logging.error("timestamp not in event")
-          logging.error(event)
-          return  "not dict or missing timestamp"
+#      ## Debug
+#      if not isinstance(event, dict) or u'timestamp' not in event:
+#          logging.error(type(event))
+#          logging.error("timestamp not in event")
+#          logging.error(event)
+#          return  "not dict or missing timestamp"
 
       ## Configure event to be a credentials dictionary  
       for key in event:
@@ -50,27 +41,28 @@ class CredsToList:
       ## Load up the Credentials
       creds = google_auth_oauthlib.flow.credentials = google.oauth2.credentials.Credentials(**event)
       gmail = googleapiclient.discovery.build(
-        API_SERVICE_NAME, API_VERSION, credentials=creds)
+        self.API_SERVICE_NAME, self.API_VERSION, credentials=creds)
      
       ## Shoot the timestamp into the big-picture queue
-      response = sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=timestamp)
+      response = self.sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=timestamp)
 
-      ## Build the timestamp-titled queue to send id_lists
-      queue = sqs.create_queue(QueueName=timestamp_mod(timestamp))
+      ## Build the timestamp-titled queue to send id_lists and the ecs to extract the data from that queue
+      queue = self.sqs.create_queue(QueueName=self.timestamp_mod(timestamp))
       queueName = queue['QueueUrl']
+      self.ecs.run_task(taskDefinition="get-emails-test-2:1")
 
       ## Begin to grab the email_ids
       response = gmail.users().messages().list(userId='me').execute()
 
       if 'messages' in response:
-          save_list(response['messages'],queueName)
+          self.sqs.send_message(QueueUrl=queueName,MessageBody=json.dumps(response['messages']))
   
       logging.error("Checking nextPageTokens")
       while 'nextPageToken' in response:
           logging.error("Executing nextPageToken")
           page_token = response['nextPageToken']
           response = gmail.users().messages().list(userId='me', pageToken=page_token).execute()
-          save_list(response['messages'],queueName)
+          self.sqs.send_message(QueueUrl=queueName,MessageBody=json.dumps(response['messages']))
   
       logging.error("record success")
       return "success"
@@ -81,7 +73,7 @@ class CredsToList:
           return "event was null"
   
       for record in event[u'Records']:
-          per_record(record[u'dynamodb'][u'NewImage'],context)
+          self.per_record(record[u'dynamodb'][u'NewImage'],context)
       return "records completed"
 
 #      if not u'Records' in event:
@@ -105,7 +97,7 @@ class CredsToList:
 
 
 def handler(event,context):
-  c = CredToList()
+  c = CredsToList()
   try:
     return c.process_event(event,context)
   except Exception, e:
