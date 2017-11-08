@@ -20,13 +20,6 @@ class CredsToList:
     self.ecs = boto3.client('ecs')
   
   def per_record(self, event, context):
-#      ## Debug
-#      if not isinstance(event, dict) or u'timestamp' not in event:
-#          logging.error(type(event))
-#          logging.error("timestamp not in event")
-#          logging.error(event)
-#          return  "not dict or missing timestamp"
-
       ## Configure event to be a credentials dictionary  
       for key in event:
           if 'S' in event[key]:
@@ -54,12 +47,12 @@ class CredsToList:
       ## Begin to grab the email_ids
       response = gmail.users().messages().list(userId='me').execute()
 
+      ## Send the first batch of email_ids to SQS
       if 'messages' in response:
           self.sqs.send_message(QueueUrl=queueName,MessageBody=json.dumps(response['messages']))
   
-      logging.error("Checking nextPageTokens")
+      ## Send the remaining batches of email_ids to SQS
       while 'nextPageToken' in response:
-          logging.error("Executing nextPageToken")
           page_token = response['nextPageToken']
           response = gmail.users().messages().list(userId='me', pageToken=page_token).execute()
           self.sqs.send_message(QueueUrl=queueName,MessageBody=json.dumps(response['messages']))
@@ -75,26 +68,6 @@ class CredsToList:
       for record in event[u'Records']:
           self.per_record(record[u'dynamodb'][u'NewImage'],context)
       return "records completed"
-
-#      if not u'Records' in event:
-#          logging.error("No 'Records' field")
-#          logging.error(event)
-#          return "No 'Records' field"
-#      else:
-#          for record in event[u'Records']:
-#              if u'dynamodb' not in record or u'NewImage' not in record[u'dynamodb']:
-#                  logging.error("Missing dynamodb or NewImage")
-#                  logging.error(record)
-#              else:
-#                  try:
-#                      per_record(record[u'dynamodb'][u'NewImage'],context)
-#                  except Exception, e:
-#                      logging.error("Some Error Occurred")
-#                      logging.error(record)
-#                      logging.error(event)
-#  		      logging.error(e)
-#          return "Completed all records"
-
 
 def handler(event,context):
   c = CredsToList()
