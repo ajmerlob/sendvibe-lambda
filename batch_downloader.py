@@ -61,7 +61,7 @@ def process_id_list(id_list,email_address):
     email = service.users().messages().get(userId='me', id=msg_id).execute()
   
     email['email_address'] = email_address
-    send.append(message)
+    send.append(email)
   return send
 
 def send_to_s3(email_data,timestamp):
@@ -73,6 +73,7 @@ def send_to_s3(email_data,timestamp):
 
 ## Open up the messages, which are lists of 50 ids
 email_data = []
+count = 0
 for m in messages['Messages']:
   count += 1
   ## Buffer up the emails received
@@ -84,7 +85,7 @@ for m in messages['Messages']:
     send_to_s3(email_data,timestamp)
     email_data = []
 
-if len(send)>0:
+if len(email_data)>0:
   send_to_s3(email_data,timestamp)
 
   
