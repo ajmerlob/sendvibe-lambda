@@ -17,7 +17,7 @@ class CredsToList:
 
   def __init__(self):
     self.sqs = boto3.client('sqs')
-    self.ecs = boto3.client('ecs')
+    self.batch = boto3.client('batch')
   
   def per_record(self, event, context):
       ## Configure event to be a credentials dictionary  
@@ -42,7 +42,7 @@ class CredsToList:
       ## Build the timestamp-titled queue to send id_lists and the ecs to extract the data from that queue
       queue = self.sqs.create_queue(QueueName=self.timestamp_mod(timestamp))
       queueName = queue['QueueUrl']
-      self.ecs.run_task(taskDefinition="get-emails-test-2:1")
+      self.batch.submit_job(jobName=timestamp,jobQueue='first-run-job-queue',jobDefinition="attempt3:1")
 
       ## Begin to grab the email_ids
       response = gmail.users().messages().list(userId='me').execute()
