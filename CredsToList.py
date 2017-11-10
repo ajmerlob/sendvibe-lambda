@@ -27,9 +27,12 @@ class CredsToList:
           if 'NULL' in event[key]:
               event[key] = None
   
-      ## Grab the timestamp, and delete it from the credentials dict
+      ## Grab the timestamp and key, and delete it from the credentials dict
+      logging.error(event)
       timestamp = event[u'timestamp']
+      email_address = event[u'key']
       del event[u'timestamp']
+      del event[u'key']
   
       ## Load up the Credentials
       creds = google_auth_oauthlib.flow.credentials = google.oauth2.credentials.Credentials(**event)
@@ -39,10 +42,11 @@ class CredsToList:
       ## Shoot the timestamp into the big-picture queue
       response = self.sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=timestamp)
 
-      ## Build the timestamp-titled queue to send id_lists and the ecs to extract the data from that queue
+      ## Build the timestamp-titled queue to send id_lists and the batch to extract the data from that queue
       queue = self.sqs.create_queue(QueueName=self.timestamp_mod(timestamp))
       queueName = queue['QueueUrl']
-      self.batch.submit_job(jobName=timestamp,jobQueue='first-run-job-queue',jobDefinition="attempt3:1")
+      jobName = "t{}".format(self.timestamp_mod(timestamp))
+      self.batch.submit_job(jobName=jobName,jobQueue='first-run-job-queue',jobDefinition="attempt3:2")
 
       ## Begin to grab the email_ids
       response = gmail.users().messages().list(userId='me').execute()
@@ -71,8 +75,8 @@ class CredsToList:
 
 def handler(event,context):
   c = CredsToList()
-  try:
-    return c.process_event(event,context)
-  except Exception, e:
-    logging.error(e)
-    return "failed"
+#  try:
+  return c.process_event(event,context)
+#  except Exception, e:
+#    logging.error(e)
+#    return "failed"
