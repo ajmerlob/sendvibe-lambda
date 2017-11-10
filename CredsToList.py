@@ -39,8 +39,8 @@ class CredsToList:
       gmail = googleapiclient.discovery.build(
         self.API_SERVICE_NAME, self.API_VERSION, credentials=creds)
      
-      ## Shoot the timestamp into the big-picture queue
-      response = self.sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=timestamp)
+      ## Shoot the email_address into the big-picture queue
+      response = self.sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=email_address)
 
       ## Build the timestamp-titled queue to send id_lists and the batch to extract the data from that queue
       queue = self.sqs.create_queue(QueueName=self.timestamp_mod(timestamp))
