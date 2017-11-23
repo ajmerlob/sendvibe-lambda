@@ -5,6 +5,7 @@ import boto3
 import logging
 import time
 import json
+import requests
 
 logging.getLogger('googleapiclient.discovery_cache').setLevel(logging.ERROR)
 
@@ -19,7 +20,7 @@ class CredsToList:
     self.sqs = boto3.client('sqs')
     self.batch = boto3.client('batch')
   
-  def per_record(self, event, context):
+  def process_record(self, event, context):
       ## Configure event to be a credentials dictionary  
       for key in event:
           if 'S' in event[key]:
@@ -38,6 +39,12 @@ class CredsToList:
       creds = google_auth_oauthlib.flow.credentials = google.oauth2.credentials.Credentials(**event)
       gmail = googleapiclient.discovery.build(
         self.API_SERVICE_NAME, self.API_VERSION, credentials=creds)
+
+      ## Subscribe to future email changes
+      all_request = {
+        'topicName': 'projects/sendvibe-test-1/topics/mail'
+                }
+      gmail.users().watch(userId='me', body=all_request).execute()
      
       ## Shoot the email_address into the big-picture queue
       response = self.sqs.send_message(QueueUrl="https://us-west-2.queue.amazonaws.com/985724320380/email_ids_to_download",MessageBody=json.dumps((email_address,timestamp)))
@@ -70,13 +77,14 @@ class CredsToList:
           return "event was null"
   
       for record in event[u'Records']:
-          self.per_record(record[u'dynamodb'][u'NewImage'],context)
+          self.process_record(record[u'dynamodb'][u'NewImage'],context)
       return "records completed"
 
 def handler(event,context):
   c = CredsToList()
-#  try:
-  return c.process_event(event,context)
-#  except Exception, e:
-#    logging.error(e)
-#    return "failed"
+  logging.error(event)
+  try:
+    return c.process_event(event,context)
+  except Exception, e:
+    logging.error(e)
+    return "failed"
