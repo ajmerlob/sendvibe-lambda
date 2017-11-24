@@ -53,7 +53,7 @@ class CredsToList:
       queue = self.sqs.create_queue(QueueName=self.timestamp_mod(timestamp))
       queueName = queue['QueueUrl']
       jobName = "t{}".format(self.timestamp_mod(timestamp))
-      self.batch.submit_job(jobName=jobName,jobQueue='first-run-job-queue',jobDefinition="attempt3:2")
+      self.batch.submit_job(jobName=jobName,jobQueue='emails-to-s3',jobDefinition="emails-to-s3-job:1")
 
       ## Begin to grab the email_ids
       response = gmail.users().messages().list(userId='me').execute()
